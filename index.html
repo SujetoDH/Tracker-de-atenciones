@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cierres diarios</title>
+  <style>
+    :root{
+      --bg:#0b0c10;
+      --line:rgba(255,255,255,.12);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.62);
+      --ok:#27f2a5;
+      --warn:#ffd56a;
+      --accent:#9b7bff;
+      --shadow:0 18px 60px rgba(0,0,0,.45);
+      --radius:22px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 800px at 30% 0%, rgba(155,123,255,.22), transparent 60%),
+        linear-gradient(180deg, #05060a, var(--bg));
+      overflow-x:hidden;
+    }
+
+    /* Hard reset botones (evita que queden blancos por estilos del navegador) */
+    button{ -webkit-appearance:none; appearance:none; font:inherit; color:inherit; background:transparent; border:none; padding:0; margin:0; }
+
+    .wrap{min-height:100%; display:flex; justify-content:center; padding:18px}
+    .app{width:min(980px, 100%); display:flex; flex-direction:column; gap:14px}
+
+    .top{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap}
+    .brand{display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--line); border-radius:999px; background:rgba(255,255,255,.04)}
+    .dot{width:12px; height:12px; border-radius:999px; background:linear-gradient(135deg,var(--accent),var(--ok)); box-shadow:0 0 0 4px rgba(155,123,255,.12)}
+    .title{font-weight:950}
+    .subtitle{font-size:12px; color:var(--muted)}
+
+    .card{border:1px solid var(--line); border-radius:var(--radius); background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04)); box-shadow:var(--shadow); padding:16px}
+
+    .kpi-label{color:var(--muted); font-size:13px}
+    .kpi-value{font-size:56px; font-weight:950; letter-spacing:-1px; line-height:1.05; margin-top:6px}
+
+    .bar{height:14px; border-radius:999px; overflow:hidden; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.10)}
+    .bar > i{display:block; height:100%; width:0%; background:linear-gradient(90deg, rgba(155,123,255,.9), rgba(39,242,165,.9)); transition: width 220ms ease}
+
+    .grid{display:grid; grid-template-columns: 1fr; gap:14px}
+    @media (min-width: 980px){ .grid{grid-template-columns: 1.1fr .9fr} }
+
+    .big-number{font-size:72px; font-weight:950; letter-spacing:-1px; line-height:1}
+
+    .status{margin-top:10px; padding:10px 12px; border-radius:16px; border:1px solid var(--line); background:rgba(255,255,255,.04); font-weight:900}
+    .status.ok{border-color:rgba(39,242,165,.25); background:rgba(39,242,165,.08)}
+    .status.warn{border-color:rgba(255,213,106,.25); background:rgba(255,213,106,.08)}
+
+    /* BOTONES (estilo anterior) */
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.05);
+      color:var(--text);
+      border-radius:18px;
+      padding:12px 14px;
+      font-weight:950;
+      cursor:pointer;
+      transition: transform 90ms ease, background 180ms ease, border-color 180ms ease;
+      user-select:none;
+    }
+    .btn:hover{background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.20)}
+    .btn:active{transform:scale(.99)}
+    .btn:disabled{opacity:.45; cursor:not-allowed}
+
+    .btn.big{padding:22px 16px; font-size:22px; border-radius:22px; background:linear-gradient(135deg, rgba(39,242,165,.22), rgba(155,123,255,.12)); border-color:rgba(39,242,165,.22)}
+    .ghost{background:transparent}
+    .danger{border-color:rgba(255,93,108,.28)}
+    .danger:hover{background:rgba(255,93,108,.10)}
+
+    .row{display:flex; flex-wrap:wrap; gap:10px}
+    .muted{color:var(--muted)}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace}
+
+    .field{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top: 10px; padding: 12px; border: 1px solid rgba(255,255,255,.10); border-radius: 18px; background: rgba(255,255,255,.04)}
+    input[type="number"]{
+      width: 160px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+      font-weight: 900;
+      outline: none
+    }
+
+    /* QUOTE */
+    .quote{padding: 16px; border-radius: var(--radius); border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); box-shadow:var(--shadow)}
+    .quote-top{display:flex; justify-content:space-between; align-items:center; gap:10px}
+    .quote-tag{font-size:12px; color:var(--muted)}
+    .quote-actions{display:flex; gap:8px; align-items:center}
+    .quote-btn{padding:8px 10px; border-radius:14px; font-size:12px}
+    .quote-text{margin-top:10px; font-size:24px; line-height:1.32; font-weight:950; letter-spacing:-.25px}
+    .quote-by{margin-top: 10px; font-size: 13px; color: var(--muted)}
+    .quote.min .quote-text{font-size:14px; font-weight:900; line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:8px}
+    .quote.min .quote-by{display:none}
+
+    /* ETA (sin burbuja) */
+    .eta{margin-top:12px; font-size:18px; line-height:1.35; color:rgba(255,255,255,.82)}
+    .eta-num{
+      font-weight:950;
+      background:linear-gradient(90deg, rgba(39,242,165,.95), rgba(72,210,255,.95));
+      -webkit-background-clip:text;
+      background-clip:text;
+      color:transparent;
+      text-shadow: 0 0 18px rgba(39,242,165,.14);
+    }
+    .youcan{
+      margin-top:10px;
+      font-weight:950;
+      letter-spacing:-0.6px;
+      line-height:1.08;
+      text-align:left;
+      font-size: clamp(22px, 2.3vw, 30px);
+      background:linear-gradient(90deg, rgba(39,242,165,.95), rgba(72,210,255,.95));
+      -webkit-background-clip:text;
+      background-clip:text;
+      color:transparent;
+      text-shadow: 0 0 18px rgba(39,242,165,.14);
+    }
+
+    /* CALENDARIO */
+    .cal-inner{width:100%; max-width:100%; margin-left:auto; margin-right:auto}
+    .cal-head{display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%}
+    .cal-title{font-weight:950}
+    .cal-controls{display:flex; gap:10px; align-items:center}
+    .cal-btn{padding:8px 10px; border-radius:14px; font-size:12px}
+
+    .card.calendar{
+      width: 1030px;
+      position: relative;
+      left: -23px;
+      transform: none;
+      /* CLAVE: recorta cualquier desborde */
+      overflow: hidden;
+      padding: 16px;
+      margin-top: 2px;
+    }
+
+    .cal{margin-top: 12px; display:grid; grid-template-columns: 26px 1fr; gap: 10px; align-items:start; width:100%}
+    .cal-y{display:grid; grid-template-rows: repeat(7, 12px); gap: 6px; padding-top: 2px}
+    .cal-y div{font-size:10px; color: rgba(255,255,255,.40); line-height:12px; text-align:center}
+
+    .cal-grid{
+      display:flex;
+      gap:6px;
+      overflow:hidden;
+      padding: 6px;         /* aire para el borde "today" */
+      max-width:100%;
+    }
+    .cal-week{display:grid; grid-template-rows: repeat(7, 12px); gap:6px}
+
+    .cell{width: 12px; height: 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.05)}
+    .cell.out{opacity:.25}
+    .cell.p{background: rgba(39,242,165, calc(0.08 + 0.55 * var(--p))); border-color: rgba(39,242,165, calc(0.10 + 0.35 * var(--p)))}
+    .cell.today{
+      outline:none;
+      box-shadow:
+        0 0 0 2px rgba(155,123,255,.95),
+        0 0 0 5px rgba(155,123,255,.18);
+    }
+
+    .legend{grid-column: 2; display:flex; align-items:center; gap: 8px; margin-top: 8px}
+    .legend .lab{font-size:12px; color: var(--muted)}
+    .legend .cell{width:12px; height:12px}
+
+    /* Confetti */
+    .confetti-layer{position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:9999}
+    .confetti{position:absolute; top:-14px; width:10px; height:14px; border-radius:3px; opacity:.95; animation: fall 1200ms linear forwards, spin 900ms ease-in-out infinite}
+    @keyframes fall{to{transform: translateY(calc(100vh + 40px));}}
+    @keyframes spin{50%{rotate:180deg;} 100%{rotate:360deg;}}
+
+    .toast{position:fixed; left:18px; right:18px; bottom:18px; padding:12px 14px; border-radius:16px; border:1px solid rgba(255,93,108,.35); background:rgba(30,10,12,.8); color:rgba(255,255,255,.92); box-shadow:var(--shadow); z-index:99999; display:none}
+
+    .foot{display:flex; justify-content:space-between; gap:10px; color:rgba(255,255,255,.45); font-size:12px; padding:0 2px; flex-wrap:wrap}
+    .backup{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .backup .btn{padding:10px 12px; border-radius:16px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="app">
+
+      <div class="top">
+        <div class="brand">
+          <div class="dot"></div>
+          <div>
+            <div class="title" id="appTitle">Cierres</div>
+            <div class="subtitle">offline • 1 toque</div>
+          </div>
+        </div>
+        <div class="subtitle" id="todayLabel"></div>
+      </div>
+
+      <section class="quote" id="quoteCard" aria-label="Motivación">
+        <div class="quote-top">
+          <div class="quote-tag">Frase del día</div>
+          <div class="quote-actions">
+            <button class="btn ghost quote-btn" id="quoteToggle" type="button">Minimizar</button>
+            <button class="btn quote-btn" id="quoteNew" type="button">Otra frase</button>
+          </div>
+        </div>
+        <div class="quote-text" id="quoteText">Cargando frase…</div>
+        <div class="quote-by" id="quoteBy"></div>
+      </section>
+
+      <section class="card" aria-label="Pendientes">
+        <div class="kpi-label">Pendientes restantes</div>
+        <div class="kpi-value" id="remaining">563</div>
+        <div class="bar" aria-label="Barra de backlog"><i id="backlogBar"></i></div>
+        <div class="muted" style="margin-top:8px; font-size:12px;">
+          Backlog inicial: <span id="initialBacklog" class="mono">563</span>
+          <span class="muted"> • </span>
+          Abiertas acumuladas: <span id="addedAllTime" class="mono">0</span>
+        </div>
+
+        <div class="field" aria-label="Abiertas hoy">
+          <div>
+            <div class="kpi-label">Abiertas hoy</div>
+            <div class="muted" style="font-size:12px; margin-top:2px;">Atenciones que te quedaron pendientes HOY. Se suman al total pendiente (si corriges el número, se reemplaza).</div>
+          </div>
+          <input type="number" id="addedTodayInput" min="0" step="1" value="0" />
+          <button class="btn" id="saveAdded" type="button">Guardar</button>
+          <div class="muted" style="font-size:12px;">Hoy llevas: <span class="mono" id="addedToday">0</span></div>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="card" aria-label="Progreso de hoy">
+          <div class="kpi-label">Cerradas hoy</div>
+          <div class="big-number" id="todayCount">0</div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+            <div class="kpi-label">Meta diaria</div>
+            <div class="muted"><span id="goalNow">0</span>/<span id="goalTotal">10</span></div>
+          </div>
+          <div class="bar" aria-label="Barra meta diaria"><i id="goalBar"></i></div>
+
+          <div class="status warn" id="status">Te faltan 10</div>
+
+          <div class="eta" id="etaLine">
+            Si mantienes el mismo ritmo de hoy, te quedan <span class="eta-num" id="etaDays">—</span> días para completar las atenciones pendientes.
+          </div>
+          <div class="youcan">¡TÚ PUEDES!</div>
+        </div>
+
+        <div class="card" aria-label="Controles">
+          <button class="btn big" id="btn1" type="button">+1 CERRADA</button>
+          <div class="row" style="margin-top:12px;">
+            <button class="btn" id="btn5" type="button">+5</button>
+            <button class="btn" id="btn10" type="button">+10</button>
+            <button class="btn ghost" id="undo" type="button">Deshacer</button>
+            <button class="btn ghost danger" id="reset" type="button">Reset hoy</button>
+          </div>
+
+          <div class="field" style="margin-top:12px" aria-label="Respaldo local">
+            <div>
+              <div class="kpi-label">Respaldo local</div>
+              <div class="muted" style="font-size:12px; margin-top:2px;">Exporta a un archivo y guárdalo (Drive/PC). Para restaurar, importa el archivo.</div>
+            </div>
+            <div class="backup">
+              <button class="btn" id="exportBtn" type="button">Exportar</button>
+              <button class="btn ghost" id="importBtn" type="button">Importar</button>
+              <input type="file" id="importFile" accept="application/json" style="display:none" />
+            </div>
+          </div>
+
+          <div class="muted" style="margin-top:12px; font-size:12px;">
+            Tip: deja esta pestaña fijada y úsala como botón rápido.
+          </div>
+        </div>
+      </section>
+
+      <!-- ✅ CALENDARIO CORREGIDO (cierre de tags + sin desborde) -->
+      <section class="card calendar" aria-label="Calendario">
+        <div class="cal-inner">
+
+          <div class="cal-head">
+            <div>
+              <div class="cal-title">Calendario de cumplimiento</div>
+              <div class="subtitle">Color = porcentaje de meta (0%→100%) en CERRADAS. Pasa el mouse para ver detalle.</div>
+            </div>
+
+            <div class="cal-controls">
+              <button class="btn ghost cal-btn" id="yearPrev" type="button">◀</button>
+              <div class="mono" id="yearLabel">2026</div>
+              <button class="btn ghost cal-btn" id="yearNext" type="button">▶</button>
+            </div>
+          </div>
+
+          <div class="cal">
+            <div class="cal-y" aria-hidden="true">
+              <div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div>
+            </div>
+
+            <div>
+              <div class="cal-grid" id="calGrid"></div>
+
+              <div class="legend" aria-label="Leyenda">
+                <span class="lab">0%</span>
+                <div class="cell"></div>
+                <div class="cell p" style="--p:.25"></div>
+                <div class="cell p" style="--p:.5"></div>
+                <div class="cell p" style="--p:.75"></div>
+                <div class="cell p" style="--p:1"></div>
+                <span class="lab">100%</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <div id="confettiLayer" class="confetti-layer" aria-hidden="true"></div>
+
+      <audio id="successSound" preload="auto">
+        <source src="victory.mp3" type="audio/mpeg" />
+      </audio>
+
+      <div class="foot">
+        <div>Hoy: <span class="mono" id="todayKey">--</span></div>
+        <div class="mono">LocalStorage ✓</div>
+        <div class="muted" id="quoteAttribution"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function(){
+    const LS_KEY = 'cierres_simple_v6'; // conserva tu progreso
+    const DAILY_GOAL = 10;
+    const INITIAL_BACKLOG = 563;
+    const APP_TITLE = 'Tracker de Atenciones v8.0';
+
+    const QUOTE_API = 'https://quoteslate.vercel.app/api/quotes/random?minLength=60&maxLength=200';
+    const FALLBACK_QUOTES = [
+      { text: 'Hoy no necesitas terminar todo: solo avanzar lo suficiente para que mañana sea más fácil.', by: '' },
+      { text: 'Small progress is still progress.', by: '' },
+      { text: 'Haz lo siguiente correcto. Luego repite.', by: '' },
+      { text: 'La constancia le gana a la intensidad cuando la intensidad no es constante.', by: '' },
+      { text: 'One closure at a time. Momentum matters.', by: '' },
+    ];
+
+    const toast = document.getElementById('toast');
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(()=>{ toast.style.display='none'; }, 6500);
+    }
+    window.addEventListener('error', (e)=>{
+      showToast('Ocurrió un error. Recarga la página.');
+      console.error(e.error || e.message);
+    });
+
+    function todayKeyLocal(d = new Date()){
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const day = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
+    }
+    function formatKeyDMY(key){
+      const parts = String(key||'').split('-');
+      if(parts.length !== 3) return String(key||'');
+      const [y,m,d] = parts;
+      return `${d}-${m}-${y}`;
+    }
+    function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+
+    function loadState(){
+      try{ const raw = localStorage.getItem(LS_KEY); if(!raw) return null; return JSON.parse(raw); }
+      catch{ return null; }
+    }
+    function saveState(st){ localStorage.setItem(LS_KEY, JSON.stringify(st)); }
+
+    function sumMap(map){
+      let s = 0;
+      for(const k in (map||{})) s += Number(map[k]||0);
+      return s;
+    }
+
+    function addDaysKeyLocal(dateKey, deltaDays){
+      const [y,m,d] = dateKey.split('-').map(Number);
+      const dt = new Date(y, m-1, d);
+      dt.setDate(dt.getDate() + deltaDays);
+      return todayKeyLocal(dt);
+    }
+
+    function isLeapYear(y){ return (y%4===0 && y%100!==0) || (y%400===0); }
+    function buildYearGrid(year){
+      const start = new Date(year, 0, 1);
+      const end = new Date(year, 11, 31);
+      const dow = (start.getDay() + 6) % 7; // lunes=0
+      const alignedStart = new Date(year, 0, 1);
+      alignedStart.setDate(alignedStart.getDate() - dow);
+
+      const daysInYear = isLeapYear(year) ? 366 : 365;
+      const totalDays = daysInYear + dow;
+      const weeks = Math.ceil(totalDays / 7);
+
+      const alignedStartKey = todayKeyLocal(alignedStart);
+      const startKey = todayKeyLocal(start);
+      const endKey = todayKeyLocal(end);
+
+      const grid = Array.from({ length: weeks }, (_, w) =>
+        Array.from({ length: 7 }, (_, r) => {
+          const key = addDaysKeyLocal(alignedStartKey, w*7 + r);
+          const inYear = key >= startKey && key <= endKey;
+          return { key, inYear };
+        })
+      );
+      return { grid };
+    }
+
+    let state = loadState() || {
+      version: 8,
+      initialBacklog: INITIAL_BACKLOG,
+      dailyGoal: DAILY_GOAL,
+      lastDateKey: todayKeyLocal(),
+      todayCount: 0,
+      addedToday: 0,
+      closedHistory: {},
+      addedHistory: {},
+      undoStack: []
+    };
+
+    const elRemaining = document.getElementById('remaining');
+    const elBacklogBar = document.getElementById('backlogBar');
+    const elInitialBacklog = document.getElementById('initialBacklog');
+    const elAddedAllTime = document.getElementById('addedAllTime');
+
+    const elTodayCount = document.getElementById('todayCount');
+    const elGoalNow = document.getElementById('goalNow');
+    const elGoalTotal = document.getElementById('goalTotal');
+    const elGoalBar = document.getElementById('goalBar');
+    const elStatus = document.getElementById('status');
+
+    const elTodayKey = document.getElementById('todayKey');
+    const elTodayLabel = document.getElementById('todayLabel');
+
+    const elAddedToday = document.getElementById('addedToday');
+    const elAddedInput = document.getElementById('addedTodayInput');
+
+    const elQuoteCard = document.getElementById('quoteCard');
+    const elQuoteText = document.getElementById('quoteText');
+    const elQuoteBy = document.getElementById('quoteBy');
+    const elQuoteAttr = document.getElementById('quoteAttribution');
+
+    const elCalGrid = document.getElementById('calGrid');
+    const elYearLabel = document.getElementById('yearLabel');
+    const elImportFile = document.getElementById('importFile');
+
+    const successSound = document.getElementById('successSound');
+    const confettiLayer = document.getElementById('confettiLayer');
+    let playedToday = false;
+    let confettiTimer = null;
+
+    function startConfetti(durationMs){
+      const total = clamp(Number(durationMs)||0, 1500, 25000);
+      const burstEveryMs = 160;
+      const perBurst = 16;
+      const colors = ['#27f2a5','#9b7bff','#ffd56a','#ffffff'];
+      const vw = window.innerWidth;
+
+      if(confettiTimer){ clearInterval(confettiTimer); confettiTimer = null; }
+
+      const startedAt = Date.now();
+      confettiTimer = setInterval(() => {
+        const elapsed = Date.now() - startedAt;
+        if(elapsed >= total){
+          clearInterval(confettiTimer);
+          confettiTimer = null;
+          return;
+        }
+        const boost = elapsed < 900 ? 1.7 : 1;
+        const n = Math.round(perBurst * boost);
+        for(let i=0;i<n;i++){
+          const piece = document.createElement('div');
+          piece.className = 'confetti';
+          piece.style.left = `${Math.random()*vw}px`;
+          const w = 6 + Math.random()*10;
+          const h = 8 + Math.random()*16;
+          piece.style.width = `${w}px`;
+          piece.style.height = `${h}px`;
+          piece.style.background = colors[(Math.random()*colors.length)|0];
+          const fallMs = 1100 + Math.random()*900;
+          piece.style.animationDuration = `${fallMs}ms, 900ms`;
+          confettiLayer.appendChild(piece);
+          setTimeout(()=>piece.remove(), Math.min(3200, fallMs + 800));
+        }
+      }, burstEveryMs);
+    }
+
+    function playSuccess(){
+      if(!successSound) return;
+      try{
+        successSound.pause();
+        successSound.currentTime = 0;
+        const BASE_VOL = 0.9;
+        successSound.volume = BASE_VOL;
+        const p = successSound.play();
+        if(p && typeof p.catch === 'function') p.catch(()=>{});
+
+        const FADE_SECONDS = 5;
+        const STEP_MS = 80;
+        const interval = setInterval(() => {
+          const dur = successSound.duration;
+          if(!dur || !isFinite(dur)) return;
+          const timeLeft = dur - successSound.currentTime;
+          if(timeLeft <= FADE_SECONDS){
+            const t = Math.max(0, timeLeft / FADE_SECONDS);
+            successSound.volume = BASE_VOL * t;
+          }
+          if(timeLeft <= 0.05 || successSound.ended){
+            clearInterval(interval);
+            successSound.volume = BASE_VOL;
+          }
+        }, STEP_MS);
+      }catch{}
+    }
+
+    function celebrate(){
+      const ms = (successSound && successSound.duration && isFinite(successSound.duration))
+        ? (successSound.duration * 1000)
+        : 9000;
+      startConfetti(ms);
+      playSuccess();
+    }
+
+    function rolloverIfNeeded(st){
+      const tKey = todayKeyLocal();
+      if(st.lastDateKey !== tKey){
+        const prevKey = st.lastDateKey;
+        const prevClosed = Number(st.todayCount || 0);
+        if(prevKey && prevClosed > 0){
+          st.closedHistory[prevKey] = Number(st.closedHistory[prevKey] || 0) + prevClosed;
+        }
+        const prevAdded = Number(st.addedToday || 0);
+        if(prevKey && prevAdded > 0){
+          st.addedHistory[prevKey] = Number(st.addedHistory[prevKey] || 0) + prevAdded;
+        }
+        st.lastDateKey = tKey;
+        st.todayCount = 0;
+        st.addedToday = 0;
+        st.undoStack = [];
+        playedToday = false;
+      }
+      return st;
+    }
+
+    function totals(st){
+      const closedAll = sumMap(st.closedHistory) + Number(st.todayCount||0);
+      const addedAll = sumMap(st.addedHistory) + Number(st.addedToday||0);
+      const totalBacklog = Number(st.initialBacklog||0) + addedAll;
+      const remaining = clamp(totalBacklog - closedAll, 0, totalBacklog);
+      return { closedAll, addedAll, totalBacklog, remaining };
+    }
+
+    let quoteMin = false;
+    function setQuoteMinimized(min){
+      quoteMin = !!min;
+      elQuoteCard.classList.toggle('min', quoteMin);
+      document.getElementById('quoteToggle').textContent = quoteMin ? 'Expandir' : 'Minimizar';
+    }
+
+    function pickFallbackQuote(){
+      return FALLBACK_QUOTES[(Math.random()*FALLBACK_QUOTES.length)|0];
+    }
+
+    function setQuote(text, by, attr){
+      elQuoteText.textContent = '“' + text + '”';
+      elQuoteBy.textContent = by ? ('— ' + by) : '';
+      elQuoteAttr.textContent = attr || '';
+    }
+
+    async function loadQuote(forceNew=false){
+      const cacheKey = 'quote_cache_' + todayKeyLocal();
+      if(!forceNew){
+        try{
+          const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+          if(cached && cached.text){
+            setQuote(cached.text, cached.by || '', cached.source || '');
+            return;
+          }
+        }catch{}
+      }
+
+      const controller = new AbortController();
+      const timeout = setTimeout(()=>controller.abort(), 2200);
+
+      try{
+        const res = await fetch(QUOTE_API, { cache: 'no-store', signal: controller.signal });
+        clearTimeout(timeout);
+        if(!res.ok) throw new Error('bad status');
+        const data = await res.json();
+        const text = data.quote || data.content || data.text || '';
+        const by = data.author || data.by || data.originator || '';
+        if(!text) throw new Error('no text');
+        const payload = { text, by, source: 'Quotes via QuoteSlate API' };
+        if(!forceNew) localStorage.setItem(cacheKey, JSON.stringify(payload));
+        setQuote(text, by, payload.source);
+      }catch{
+        clearTimeout(timeout);
+        const q = pickFallbackQuote();
+        setQuote(q.text, q.by, '');
+      }
+    }
+
+    let selectedYear = new Date().getFullYear();
+
+    function dayClosedCount(key){
+      const tKey = todayKeyLocal();
+      if(key === tKey) return Number(state.todayCount||0);
+      return Number(state.closedHistory[key] || 0);
+    }
+
+    function renderCalendar(){
+      const goal = Number(state.dailyGoal||DAILY_GOAL);
+      const tKey = todayKeyLocal();
+      elYearLabel.textContent = String(selectedYear);
+
+      const { grid } = buildYearGrid(selectedYear);
+      elCalGrid.innerHTML = '';
+
+      for(let w=0; w<grid.length; w++){
+        const weekEl = document.createElement('div');
+        weekEl.className = 'cal-week';
+        for(let r=0; r<7; r++){
+          const cell = grid[w][r];
+          const div = document.createElement('div');
+          div.className = 'cell' + (cell.inYear ? '' : ' out');
+
+          if(cell.inYear){
+            const c = dayClosedCount(cell.key);
+            const p = clamp(c / goal, 0, 1);
+            if(c > 0){
+              div.classList.add('p');
+              div.style.setProperty('--p', String(p));
+            }
+            if(cell.key === tKey) div.classList.add('today');
+            const pct = Math.round(p * 100);
+            div.title = `${formatKeyDMY(cell.key)} — ${c} cierres (${pct}%)`;
+          }
+          weekEl.appendChild(div);
+        }
+        elCalGrid.appendChild(weekEl);
+      }
+    }
+
+    function render(){
+      state = rolloverIfNeeded(state);
+      const { remaining, totalBacklog, addedAll } = totals(state);
+
+      const today = Number(state.todayCount||0);
+      const goal = Number(state.dailyGoal||DAILY_GOAL);
+
+      document.getElementById('initialBacklog').textContent = String(state.initialBacklog);
+      document.getElementById('addedAllTime').textContent = String(addedAll);
+
+      document.getElementById('remaining').textContent = String(remaining);
+      const backlogPct = totalBacklog > 0 ? (remaining / totalBacklog) : 0;
+      document.getElementById('backlogBar').style.width = `${backlogPct * 100}%`;
+
+      document.getElementById('todayCount').textContent = String(today);
+      document.getElementById('goalNow').textContent = String(today);
+      document.getElementById('goalTotal').textContent = String(goal);
+      document.getElementById('goalBar').style.width = `${clamp(today/goal, 0, 1) * 100}%`;
+
+      document.getElementById('todayKey').textContent = formatKeyDMY(todayKeyLocal());
+      document.getElementById('todayLabel').textContent = new Date().toLocaleDateString('es-CL', { weekday:'short', day:'2-digit', month:'short' });
+
+      document.getElementById('addedToday').textContent = String(Number(state.addedToday||0));
+      const elAddedInput2 = document.getElementById('addedTodayInput');
+      if(document.activeElement !== elAddedInput2) elAddedInput2.value = String(Number(state.addedToday||0));
+
+      const elStatus2 = document.getElementById('status');
+      if(today >= goal){
+        elStatus2.className = 'status ok';
+        elStatus2.textContent = 'Meta cumplida ✅';
+      }else{
+        elStatus2.className = 'status warn';
+        elStatus2.textContent = `Te faltan ${goal - today}`;
+      }
+
+      const etaDaysEl = document.getElementById('etaDays');
+      if(etaDaysEl){
+        if(today <= 0){
+          etaDaysEl.textContent = '—';
+        }else{
+          const eta = remaining / today;
+          etaDaysEl.textContent = eta.toFixed(1);
+        }
+      }
+
+      const disabled = remaining <= 0;
+      document.getElementById('btn1').disabled = disabled;
+      document.getElementById('btn5').disabled = disabled;
+      document.getElementById('btn10').disabled = disabled;
+      document.getElementById('undo').disabled = (state.undoStack.length === 0);
+
+      saveState(state);
+      renderCalendar();
+    }
+
+    function applyDelta(delta){
+      state = rolloverIfNeeded(state);
+      const { remaining } = totals(state);
+      if(remaining <= 0 && delta > 0) return;
+
+      const goal = Number(state.dailyGoal || DAILY_GOAL);
+      const before = Number(state.todayCount || 0);
+
+      const actual = clamp(delta, -99999, remaining);
+      if(actual === 0) return;
+
+      state.todayCount = clamp(Number(state.todayCount||0) + actual, 0, 999999);
+      state.undoStack.push({ delta: actual });
+
+      const after = Number(state.todayCount || 0);
+      if(!playedToday && before < goal && after >= goal){
+        celebrate();
+        playedToday = true;
+      }
+
+      saveState(state);
+      render();
+    }
+
+    function undo(){
+      state = rolloverIfNeeded(state);
+      const last = state.undoStack.pop();
+      if(!last) return;
+      state.todayCount = clamp(Number(state.todayCount||0) - Number(last.delta||0), 0, 999999);
+      saveState(state);
+      render();
+    }
+
+    function resetToday(){
+      state = rolloverIfNeeded(state);
+      if(!confirm('¿Resetear HOY a 0? (No borra días anteriores)')) return;
+      state.todayCount = 0;
+      state.undoStack = [];
+      playedToday = false;
+      saveState(state);
+      render();
+    }
+
+    function saveAddedToday(){
+      state = rolloverIfNeeded(state);
+      const n = Math.max(0, Math.floor(Number(document.getElementById('addedTodayInput').value || 0)));
+      state.addedToday = n;
+      saveState(state);
+      render();
+    }
+
+    function exportBackup(){
+      const payload = { app:'cierres', exportedAt: new Date().toISOString(), state };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cierres-backup-${todayKeyLocal()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function isValidState(s){
+      if(!s || typeof s !== 'object') return false;
+      const req = ['initialBacklog','dailyGoal','lastDateKey','todayCount','addedToday','closedHistory','addedHistory','undoStack'];
+      for(const k of req){ if(!(k in s)) return false; }
+      if(typeof s.initialBacklog !== 'number' || typeof s.dailyGoal !== 'number') return false;
+      if(typeof s.lastDateKey !== 'string') return false;
+      if(typeof s.closedHistory !== 'object' || typeof s.addedHistory !== 'object') return false;
+      if(!Array.isArray(s.undoStack)) return false;
+      return true;
+    }
+
+    async function importBackupFile(file){
+      const text = await file.text();
+      let obj;
+      try{ obj = JSON.parse(text); }catch{ alert('Archivo inválido (no es JSON).'); return; }
+      const candidate = (obj && obj.state) ? obj.state : obj;
+      if(!isValidState(candidate)){
+        alert('Archivo inválido o de otra versión.');
+        return;
+      }
+      if(!confirm('¿Importar este respaldo? Esto reemplazará los datos actuales en este navegador.')) return;
+      state = candidate;
+      state = rolloverIfNeeded(state);
+      playedToday = false;
+      saveState(state);
+      render();
+      alert('Respaldo importado ✅');
+    }
+
+    document.getElementById('btn1').addEventListener('click', () => applyDelta(1));
+    document.getElementById('btn5').addEventListener('click', () => applyDelta(5));
+    document.getElementById('btn10').addEventListener('click', () => applyDelta(10));
+    document.getElementById('undo').addEventListener('click', undo);
+    document.getElementById('reset').addEventListener('click', resetToday);
+
+    document.getElementById('saveAdded').addEventListener('click', saveAddedToday);
+    document.getElementById('addedTodayInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') saveAddedToday(); });
+
+    document.getElementById('quoteToggle').addEventListener('click', () => setQuoteMinimized(!quoteMin));
+    document.getElementById('quoteNew').addEventListener('click', () => loadQuote(true));
+
+    document.getElementById('yearPrev').addEventListener('click', () => { selectedYear -= 1; renderCalendar(); });
+    document.getElementById('yearNext').addEventListener('click', () => { selectedYear += 1; renderCalendar(); });
+
+    document.getElementById('exportBtn').addEventListener('click', exportBackup);
+    document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+    document.getElementById('importFile').addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if(!file) return;
+      await importBackupFile(file);
+      e.target.value = '';
+    });
+
+    setInterval(() => {
+      const before = state.lastDateKey;
+      state = rolloverIfNeeded(state);
+      if(state.lastDateKey !== before) saveState(state);
+      render();
+    }, 60_000);
+
+    state = rolloverIfNeeded(state);
+    saveState(state);
+
+    const titleEl = document.getElementById('appTitle');
+    if(titleEl) titleEl.textContent = APP_TITLE;
+
+    setQuoteMinimized(false);
+    render();
+    loadQuote();
+  })();
+  </script>
+</body>
+</html>
