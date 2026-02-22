@@ -508,33 +508,54 @@
       }, burstEveryMs);
     }
 
-    function playSuccess(){
-      if(!successSound) return;
-      try{
-        successSound.pause();
-        successSound.currentTime = 0;
-        const BASE_VOL = 0.9;
-        successSound.volume = BASE_VOL;
-        const p = successSound.play();
-        if(p && typeof p.catch === 'function') p.catch(()=>{});
+   function playSuccess(){
+  if(!successSound) return;
 
-        const FADE_SECONDS = 5;
-        const STEP_MS = 80;
-        const interval = setInterval(() => {
-          const dur = successSound.duration;
-          if(!dur || !isFinite(dur)) return;
-          const timeLeft = dur - successSound.currentTime;
-          if(timeLeft <= FADE_SECONDS){
-            const t = Math.max(0, timeLeft / FADE_SECONDS);
-            successSound.volume = BASE_VOL * t;
-          }
-          if(timeLeft <= 0.05 || successSound.ended){
-            clearInterval(interval);
-            successSound.volume = BASE_VOL;
-          }
-        }, STEP_MS);
-      }catch{}
-    }
+  try{
+    // iOS/Safari: asegurar que partimos "limpios"
+    successSound.pause();
+    successSound.currentTime = 0;
+
+    const BASE_VOL = 0.9;
+    successSound.volume = BASE_VOL;
+
+    // Reproducir (en iOS puede fallar si no fue por gesto del usuario; igual lo intentamos)
+    const p = successSound.play();
+    if(p && typeof p.catch === 'function') p.catch(()=>{});
+
+    // Fade-out por tiempo real (no dependemos de duration, que en iOS a veces llega tarde)
+    const FADE_SECONDS = 5;
+    const STEP_MS = 80;
+
+    const start = performance.now();
+    const interval = setInterval(() => {
+      // Si algo pausó/terminó, limpiamos
+      if(successSound.paused || successSound.ended){
+        clearInterval(interval);
+        successSound.volume = BASE_VOL;
+        return;
+      }
+
+      const elapsed = (performance.now() - start) / 1000; // segundos
+      const timeLeft = 15 - elapsed; // 10s "ventana" de reproducción/celebración (ajusta si quieres)
+
+      // Si quieres que el fade empiece al final de esa ventana:
+      if(timeLeft <= FADE_SECONDS){
+        const t = Math.max(0, timeLeft / FADE_SECONDS);
+        successSound.volume = BASE_VOL * t;
+      }
+
+      // Cortamos duro al final de la ventana para evitar loops raros en iOS
+      if(timeLeft <= 0){
+        clearInterval(interval);
+        try{ successSound.pause(); }catch{}
+        successSound.currentTime = 0;
+        successSound.volume = BASE_VOL;
+      }
+    }, STEP_MS);
+
+  }catch{}
+}
 
     function celebrate(){
       const ms = (successSound && successSound.duration && isFinite(successSound.duration))
